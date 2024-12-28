@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工作记忆容量测试</title>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+    <script src="cosConfig.js"></script>
+    <script src="cosData.js"></script>
     <style>
         /* 保持与SART任务相同的基础样式 */
         body {
@@ -194,8 +196,6 @@
         </div>
     </div>
 
-    <script src="saveData.js"></script>
-
     <script>
         // 基本参数设置
         const DIGIT_DISPLAY_TIME = 1000;  // 每个数字显示时间
@@ -221,7 +221,7 @@
             'spatial': 4   // 空间练习最大到4
         };
 
-        const FORMAL_MAX_LEVEL = 9;  // 正式实验最大到9
+        const FORMAL_MAX_LEVEL = 9;  // 正式��验最大到9
         const TRIALS_PER_LEVEL = 3;  // 每个难度最多三次机会
 
         // 生成数字序列
@@ -323,7 +323,7 @@
             inputField.focus();
         }
 
-        // 显示空间输入界面
+        // 显示空间输���界面
         function showSpatialInputInterface() {
             const container = document.getElementById('gridContainer');
             const cells = container.getElementsByClassName('grid-cell');
@@ -392,7 +392,7 @@
                 } else {
                     // 显示错误反馈
                     await showFeedback('回答错误，需要重新练习', 1000);
-                    // 错误时重新开始练习
+                    // 错误重新开始练习
                     currentLevel = 3;
                     currentTrial = 0;
                 }
@@ -519,7 +519,7 @@
                         <h2>数字广度测试（正序）</h2>
                         <p>在这部分测试中，您将看到一系列数字。</p>
                         <p>数字会依次呈现，请记住它们的顺序。</p>
-                        <p>当数字消失后，请按��<strong>相同的顺序</strong>输入这些数字。</p>
+                        <p>当数字消失后，请按照<strong>相同的顺序</strong>输入这些数字。</p>
                         <p>首先进行练习阶段，然后是正式测试。</p>
                         <button onclick="startNextTrial()">开始练习</button>
                     `;
@@ -561,8 +561,15 @@
             };
 
             // 保存数据
-            const formattedData = DataManager.formatMemoryData(results);
-            DataManager.saveToServer('Memory', formattedData);
+            const formattedData = COSDataManager.formatMemoryData(results);
+            COSDataManager.saveToServer('Memory', formattedData)
+            .then(() => {
+                document.getElementById('experimentContainer').style.display = 'none';
+                document.getElementById('thankYouScreen').style.display = 'flex';
+            }).catch(error => {
+                console.error('保存数据失败:', error);
+                alert('数据保存出现问题，请联系实验员！');
+            });
 
             const instructionScreen = document.getElementById('instructionScreen');
             instructionScreen.innerHTML = `

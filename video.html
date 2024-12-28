@@ -6,6 +6,8 @@
     <title>视频学习</title>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
     <script src="https://player.bilibili.com/api.js"></script>
+    <script src="cosConfig.js"></script>
+    <script src="cosData.js"></script>
     <style>
         body {
             margin: 0;
@@ -151,7 +153,7 @@
         </div>
     </div>
 
-    <script src="saveData.js"></script>
+    <script src="cosData.js"></script>
 
     <!-- 添加结束页面 -->
     <div id="thankYouScreen" style="display: none;">
@@ -186,7 +188,7 @@
             // 设置视频源
             videoPlayer.src = videoSources[grade];
             
-            // 等待视频加载完成
+            // 等待视频载完成
             videoPlayer.addEventListener('loadedmetadata', () => {
                 // 生成探针时间点
                 generateProbeTimepoints();
@@ -203,7 +205,8 @@
             // 监听视频结束
             videoPlayer.addEventListener('ended', () => {
                 // 保存数据
-                DataManager.saveToServer('Video', responses).then(() => {
+                COSDataManager.saveToServer('Video', responses)
+                .then(() => {
                     // 标记任务完成
                     const completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '{}');
                     completedTasks['Video'] = true;

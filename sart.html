@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SART任务</title>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+    <script src="cosConfig.js"></script>
+    <script src="cosData.js"></script>
     <style>
         body {
             margin: 0;
@@ -116,7 +118,6 @@
             box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
     </style>
-    <script src="saveData.js"></script>
 </head>
 <body>
     <div id="experimentContainer">
@@ -286,7 +287,7 @@
                 probe.style.color = 'white';
                 
                 const instructionText = isPractice ? 
-                    '<p style="color: yellow;">这是走神评估示例��正式实验中会随机出现类似的问题</p>' : '';
+                    '<p style="color: yellow;">这是走神评估示例��正���实验中会随机出现类似的问题</p>' : '';
                 
                 probe.innerHTML = `
                     ${instructionText}
@@ -450,21 +451,24 @@
                 }
                 document.getElementById('instructionScreen').style.display = 'block';
             } else {
-                const formattedData = DataManager.formatSARTData(responses);
-                DataManager.saveToServer('SART', formattedData);
+                const formattedData = COSDataManager.formatSARTData(responses);
                 
-                // 保存走神评估数据
-                if (mindWanderingResponses.length > 0) {
-                    const formattedMindWanderingData = DataManager.formatMindWanderingData(mindWanderingResponses);
-                    DataManager.saveToServer('MindWandering', formattedMindWanderingData);
-                }
-                
-                document.getElementById('instructionScreen').innerHTML = `
-                    <h2>实验结束</h2>
-                    <p>感谢您的参与！</p>
-                    <button onclick="window.location.href='index.html'">返回主页面</button>
-                `;
-                document.getElementById('instructionScreen').style.display = 'block';
+                // 分别保存 SART 任务数据和探针数据
+                Promise.all([
+                    COSDataManager.saveToServer('SART_Performance', formattedData.sartResponses),
+                    COSDataManager.saveToServer('SART_Probes', formattedData.probeResponses)
+                ]).then(() => {
+                    // 标记任务完成
+                    const completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '{}');
+                    completedTasks['SART'] = true;
+                    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
+                    
+                    document.getElementById('experimentContainer').style.display = 'none';
+                    document.getElementById('thankYouScreen').style.display = 'flex';
+                }).catch(error => {
+                    console.error('保存数据失败:', error);
+                    alert('数据保存出现问题，请联系实验员！');
+                });
             }
             document.removeEventListener('keydown', handleResponse);
         }

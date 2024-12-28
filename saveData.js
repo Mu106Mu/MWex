@@ -58,7 +58,7 @@ class DataManager {
                 // 无论是否保存成功，都下载本地备份
                 this.saveLocally(experimentType, data);
             } else {
-                // 如果是单个对象（比如记忆任务的结果），直���保存
+                // 如果是单个对象（比如记忆任务的结果），直接保存
                 const ExperimentData = AV.Object.extend(experimentType);
                 const experimentData = new ExperimentData();
                 
@@ -169,18 +169,18 @@ class DataManager {
         }];
     }
 
-    static formatVideoData(responses) {
-        const participantInfo = JSON.parse(localStorage.getItem('participantInfo'));
-        return responses.map(response => ({
-            name: participantInfo.name,
-            gender: participantInfo.gender,
-            age: participantInfo.age,
-            grade: participantInfo.grade,
-            probe_time: response.timepoint,
-            response: response.response,
-            trial_type: 'Video',  // 区分于SART任务的走神评估
-            trial_timestamp: new Date().toISOString()
+    static formatVideoData(data) {
+        // 格式化为指定的列顺序
+        const formattedData = data.map(item => ({
+            name: item.name,               // 被试姓名
+            gender: item.gender,           // 性别
+            age: item.age,                // 年龄
+            grade: item.grade,            // 所在年级
+            probeTime: item.probeTime,    // 选择题出现时间
+            response: item.response       // 选项内容
         }));
+        
+        return formattedData;
     }
 
     static formatMindWanderingData(responses) {

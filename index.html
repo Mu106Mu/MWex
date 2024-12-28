@@ -213,29 +213,54 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #808080;
-            text-align: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #363636 100%);
             color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            text-align: center;
+            z-index: 1000;
         }
 
-        #thankYouScreen h2 {
-            font-size: 28px;
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .thank-you-title {
+            font-size: 36px;
             margin-bottom: 20px;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        #thankYouScreen button {
-            margin-top: 30px;
-            padding: 10px 30px;
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+        }
+
+        .restart-button {
+            padding: 12px 30px;
             font-size: 18px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 25px;
             cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .restart-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
 
         .experiment-card.completed {
@@ -295,7 +320,7 @@
                 <div class="experiment-icon">🎯</div>
                 <div class="experiment-title">SART任务</div>
                 <div class="experiment-description">
-                    持续性注意力测试，测量注意力的持续性和稳定性
+                    持续性注意力测试，测量注意���的持续性和稳定性
                 </div>
             </div>
 
@@ -320,11 +345,18 @@
             我已做完所有任务
         </button>
 
-        <div id="thankYouScreen" style="display: none;">
-            <h2>实验结束</h2>
-            <p>感谢您参与本次实验！</p>
-            <p>您的贡献对我们的研究非常重要。</p>
-            <button onclick="restartExperiment()">重新开始</button>
+        <div id="thankYouScreen">
+            <div class="thank-you-content">
+                <h1 class="thank-you-title">实验结束</h1>
+                <div class="thank-you-message">
+                    <p>感谢您参与本次实验！</p>
+                    <p>您的贡献对我们的研究非常重要。</p>
+                    <p>祝您学习进步，生活愉快！</p>
+                </div>
+                <button class="restart-button" onclick="restartExperiment()">
+                    重新开始新的实验
+                </button>
+            </div>
         </div>
 
         <div id="processModal" class="modal">

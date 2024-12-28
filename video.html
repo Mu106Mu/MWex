@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>视频学习</title>
     <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+    <script src="https://player.bilibili.com/api.js"></script>
     <style>
         body {
             margin: 0;
@@ -60,6 +61,57 @@
         .probe-button:hover {
             background-color: #45a049;
         }
+
+        /* 添加实验结束页面样式 */
+        #thankYouScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #808080;
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .thank-you-title {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .return-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .return-button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -85,11 +137,11 @@
         </div>
 
         <div id="videoContainer" style="display: none;">
-            <video id="videoPlayer" controls 
-                  controlsList="nodownload nofullscreen noplaybackrate"
-                  disablePictureInPicture
-                  disableRemotePlayback>
-                <!-- 视频源会通过JavaScript动态设置 -->
+            <video id="videoPlayer" 
+                controls
+                controlsList="nodownload nofullscreen noplaybackrate"
+                disablePictureInPicture
+                style="width: 800px; height: 500px;">
             </video>
             <div id="probeContainer">
                 <h3>你现在是否在想视频内容以外的事情？</h3>
@@ -101,15 +153,28 @@
 
     <script src="saveData.js"></script>
 
+    <!-- 添加结束页面 -->
+    <div id="thankYouScreen" style="display: none;">
+        <div class="thank-you-content">
+            <h2 class="thank-you-title">测试结束</h2>
+            <div class="thank-you-message">
+                <p>感谢您的参与！</p>
+            </div>
+            <button class="return-button" onclick="window.location.href='index.html'">
+                返回主页面
+            </button>
+        </div>
+    </div>
+
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
         const probeContainer = document.getElementById('probeContainer');
         
         // 视频源配置
         const videoSources = {
-            3: './video/three.mp4',
-            4: './video/four.mp4',
-            5: './video/five.mp4'
+            3: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade3.mp4',
+            4: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade4.mp4',
+            5: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade5.mp4'
         };
 
         let probeTimepoints = [];
@@ -117,32 +182,16 @@
         let nextProbeIndex = 0;
         let canInteract = true;
 
-        // 初始化函数
         function initializeVideo(grade) {
             // 设置视频源
             videoPlayer.src = videoSources[grade];
             
-            // 生成探针时间点
-            generateProbeTimepoints();
-            
-            // 添加视频事件监听器
-            setupVideoEventListeners();
-        }
-
-        // 生成探针时间点
-        function generateProbeTimepoints() {
-            let currentTime = 0;
-            probeTimepoints = [];
-
+            // 等待视频加载完成
             videoPlayer.addEventListener('loadedmetadata', () => {
-                while (currentTime < videoPlayer.duration) {
-                    // 生成90-150秒的随机间隔
-                    const interval = Math.random() * (150 - 90) + 90;
-                    currentTime += interval;
-                    if (currentTime < videoPlayer.duration) {
-                        probeTimepoints.push(currentTime);
-                    }
-                }
+                // 生成探针时间点
+                generateProbeTimepoints();
+                // 添加视频事件监听器
+                setupVideoEventListeners();
             });
         }
 
@@ -151,63 +200,49 @@
             // 监听时间更新
             videoPlayer.addEventListener('timeupdate', checkForProbe);
             
-            // 禁用进度条拖动
-            videoPlayer.addEventListener('seeking', preventInteraction);
-            videoPlayer.addEventListener('seeked', preventInteraction);
-            
-            // 禁用全屏
-            videoPlayer.addEventListener('fullscreenchange', preventFullscreen);
-            videoPlayer.addEventListener('webkitfullscreenchange', preventFullscreen);
-            videoPlayer.addEventListener('mozfullscreenchange', preventFullscreen);
-            videoPlayer.addEventListener('MSFullscreenChange', preventFullscreen);
-            
-            // 强制播放速度为 1.0
-            videoPlayer.addEventListener('ratechange', () => {
-                if (videoPlayer.playbackRate !== 1.0) {
-                    videoPlayer.playbackRate = 1.0;
-                }
+            // 监听视频结束
+            videoPlayer.addEventListener('ended', () => {
+                // 保存数据
+                DataManager.saveToServer('Video', responses).then(() => {
+                    // 标记任务完成
+                    const completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '{}');
+                    completedTasks['Video'] = true;
+                    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
+                    
+                    // 隐藏视频容器
+                    document.getElementById('videoContainer').style.display = 'none';
+                    // 显示完成页面
+                    document.getElementById('thankYouScreen').style.display = 'flex';
+                }).catch(error => {
+                    console.error('保存数据失败:', error);
+                    alert('数据保存出现问题，请联系实验员！');
+                });
             });
         }
 
-        // 检查是否需要显示探针
+        // 生成探针时间点
+        function generateProbeTimepoints() {
+            probeTimepoints = [];
+            let time = 90;  // 从90秒开始
+            
+            // 生成探针直到视频结束
+            while (time < videoPlayer.duration) {  // 使用视频实际时长
+                probeTimepoints.push(time);
+                time += Math.random() * (150 - 90) + 90;
+            }
+        }
+
         function checkForProbe() {
             if (!canInteract || nextProbeIndex >= probeTimepoints.length) return;
-
-            const currentTime = videoPlayer.currentTime;
-            const nextProbeTime = probeTimepoints[nextProbeIndex];
-
-            if (currentTime >= nextProbeTime) {
+            if (videoPlayer.currentTime >= probeTimepoints[nextProbeIndex]) {
                 showProbe();
             }
         }
 
-        // 显示探针
         function showProbe() {
             videoPlayer.pause();
             canInteract = false;
             probeContainer.style.display = 'block';
-        }
-
-        // 处理探针响应
-        function handleProbeResponse(response) {
-            responses.push({
-                timepoint: probeTimepoints[nextProbeIndex],
-                response: response,
-                videoTime: videoPlayer.currentTime
-            });
-
-            probeContainer.style.display = 'none';
-            nextProbeIndex++;
-            canInteract = true;
-            videoPlayer.play();
-        }
-
-        // 防止用户交互
-        function preventInteraction(event) {
-            if (!canInteract) {
-                event.preventDefault();
-                videoPlayer.currentTime = probeTimepoints[nextProbeIndex];
-            }
         }
 
         // 获取年级并初始化视频
@@ -232,23 +267,33 @@
             }
         }
 
-        // 在视频结束时保存数据
-        videoPlayer.addEventListener('ended', () => {
-            // 保存数据
-            const formattedData = DataManager.formatVideoData(responses);
-            DataManager.saveToServer('Video', formattedData);
+        // 处理探针响应
+        function handleProbeResponse(response) {
+            // 获取被试信息
+            const participantInfo = JSON.parse(localStorage.getItem('participantInfo'));
+            
+            responses.push({
+                name: participantInfo.name,
+                gender: participantInfo.gender,
+                age: participantInfo.age,
+                grade: participantInfo.grade,
+                probeTime: probeTimepoints[nextProbeIndex],  // 选择题出现时间
+                response: response,                          // 选项内容
+            });
 
-            // 显示结束界面
-            document.getElementById('videoContainer').style.display = 'none';
-            document.getElementById('instructionScreen').innerHTML = `
-                <h2>实验结束</h2>
-                <p>感谢您的参与！</p>
-                <button onclick="window.location.href='index.html'" style="margin-top: 20px;">返回主页面</button>
-            `;
-            document.getElementById('instructionScreen').style.display = 'block';
+            probeContainer.style.display = 'none';
+            nextProbeIndex++;
+            canInteract = true;
+            videoPlayer.play();
+        }
 
-            console.log('思维探针响应:', responses);
-        });
+        // 防止用户交互
+        function preventInteraction(event) {
+            if (!canInteract) {
+                event.preventDefault();
+                videoPlayer.currentTime = probeTimepoints[nextProbeIndex];
+            }
+        }
 
         // 添加防止全屏的函数
         function preventFullscreen() {

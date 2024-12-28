@@ -101,6 +101,64 @@
             display: none;
             z-index: 1000;
         }
+
+        /* 添加实验结束页面样式 */
+        #thankYouScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a 0%, #363636 100%);
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-title {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+        }
+        
+        .return-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .return-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -121,6 +179,19 @@
             <button onclick="checkAnswer()">确认</button>
         </div>
         <div id="feedback" style="display: none;"></div>
+    </div>
+
+    <div id="thankYouScreen" style="display: none;">
+        <div class="thank-you-content">
+            <h1 class="thank-you-title">记忆任务完成</h1>
+            <div class="thank-you-message">
+                <p>感谢您完成记忆任务！</p>
+                <p>您的数据已经成功保存。</p>
+            </div>
+            <button class="return-button" onclick="window.location.href='index.html'">
+                返回主页面
+            </button>
+        </div>
     </div>
 
     <script src="saveData.js"></script>
@@ -349,7 +420,7 @@
                     return;
                 }
                 
-                // 如果已经有两次正确��直接进入下一难度
+                // 如果已经有两次正确直接进入下一难度
                 if (correctCount >= 2) {
                     currentLevel++;
                     currentTrial = 0;
@@ -448,7 +519,7 @@
                         <h2>数字广度测试（正序）</h2>
                         <p>在这部分测试中，您将看到一系列数字。</p>
                         <p>数字会依次呈现，请记住它们的顺序。</p>
-                        <p>当数字消失后，请按照<strong>相同的顺序</strong>输入这些���字。</p>
+                        <p>当数字消失后，请按��<strong>相同的顺序</strong>输入这些数字。</p>
                         <p>首先进行练习阶段，然后是正式测试。</p>
                         <button onclick="startNextTrial()">开始练习</button>
                     `;
@@ -469,7 +540,7 @@
                         <p>在这部分测试中，您将看到一个3×3的方格阵列。</p>
                         <p>方格会依次亮起，请记住它们亮起的顺序。</p>
                         <p>当序列结束后，请按照<strong>相同的顺序</strong>点击这些方格。</p>
-                        <p>首先进行练习阶段，然后是正式测���。</p>
+                        <p>首先进行练习阶段，然后是正式测试。</p>
                         <button onclick="startNextTrial()">开始练习</button>
                     `;
                     break;
@@ -540,6 +611,11 @@
                     resolve();
                 }, duration);
             });
+        }
+
+        function finishExperiment() {
+            document.getElementById('experimentContainer').style.display = 'none';
+            document.getElementById('thankYouScreen').style.display = 'flex';
         }
     </script>
 </body>

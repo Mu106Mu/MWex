@@ -58,6 +58,63 @@
         button:hover {
             background-color: #45a049;
         }
+
+        #thankYouScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a 0%, #363636 100%);
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-title {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+        }
+        
+        .return-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .return-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
     </style>
     <script src="saveData.js"></script>
 </head>
@@ -76,9 +133,22 @@
         <div id="feedback" style="display: none;"></div>
     </div>
 
+    <div id="thankYouScreen" style="display: none;">
+        <div class="thank-you-content">
+            <h1 class="thank-you-title">SART任务完成</h1>
+            <div class="thank-you-message">
+                <p>感谢您完成SART任务！</p>
+                <p>您的数据已经成功保存。</p>
+            </div>
+            <button class="return-button" onclick="window.location.href='index.html'">
+                返回主页面
+            </button>
+        </div>
+    </div>
+
     <script>
         // 时间参数
-        const FIXATION_TIME = 500;    // 注视点呈现时间（��秒）
+        const FIXATION_TIME = 500;    // 注视点呈现时间（秒）
         const STIMULUS_TIME = 1250;   // 刺激呈现时间（毫秒）
         const ITI = 1000;            // 试次间隔时间（毫秒）
         const FEEDBACK_TIME = 1300;   // 反馈呈现时间（毫秒）
@@ -216,7 +286,7 @@
                 probe.style.color = 'white';
                 
                 const instructionText = isPractice ? 
-                    '<p style="color: yellow;">这是走神评估示例，正式实验中会随机出现类似的问题</p>' : '';
+                    '<p style="color: yellow;">这是走神评估示例��正式实验中会随机出现类似的问题</p>' : '';
                 
                 probe.innerHTML = `
                     ${instructionText}
@@ -358,7 +428,7 @@
                 
                 if (parseFloat(accuracy) >= 90) {
                     document.getElementById('instructionScreen').innerHTML = `
-                        <h2>练习阶段结束</h2>
+                        <h2>���习阶段结束</h2>
                         <p>您的准确率为: ${accuracy}%</p>
                         <p>记住：</p>
                         <p>- 看到数字3时<strong>不要</strong>按键</p>
@@ -407,6 +477,11 @@
         // 暴露到全局作用域
         window.startPractice = startPractice;
         window.startFormalExperiment = startFormalExperiment;
+
+        function finishExperiment() {
+            document.getElementById('experimentContainer').style.display = 'none';
+            document.getElementById('thankYouScreen').style.display = 'flex';
+        }
     </script>
 </body>
 </html> 

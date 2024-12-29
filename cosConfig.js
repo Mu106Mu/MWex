@@ -12,11 +12,34 @@ class COSConfig {
         const expireTime = now + 3600;
         const keyTime = `${now};${expireTime}`;
         
-        // 生成签名
+        // 1. 生成 SignKey
         const signKey = CryptoJS.HmacSHA1(keyTime, this.config.SecretKey).toString();
-        const stringToSign = `put\n/${key}\n\nhost=${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com\n`;
+        
+        // 2. 构建 HttpString
+        const httpString = 'put\n/' + key + '\n\n';
+        
+        // 3. 生成 StringToSign
+        const stringToSign = httpString;
+        
+        // 4. 计算签名
         const signature = CryptoJS.HmacSHA1(stringToSign, signKey).toString();
         
-        return `https://${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com/${key}?q-sign-algorithm=sha1&q-ak=${this.config.SecretId}&q-sign-time=${keyTime}&q-key-time=${keyTime}&q-signature=${signature}`;
+        // 5. 生成授权参数
+        const query = {
+            'q-sign-algorithm': 'sha1',
+            'q-ak': this.config.SecretId,
+            'q-sign-time': keyTime,
+            'q-key-time': keyTime,
+            'q-header-list': '',
+            'q-url-param-list': '',
+            'q-signature': signature
+        };
+        
+        // 6. 构建完整URL
+        const queryString = Object.entries(query)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('&');
+            
+        return `https://${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com/${key}?${queryString}`;
     }
 } 

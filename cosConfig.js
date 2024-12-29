@@ -19,26 +19,24 @@ class COSConfig {
         const method = 'put';
         const pathname = '/' + key;
         const headers = { 'content-type': 'text/csv' };
-        const params = {};
         
-        // 3. 生成 HeaderList 和 UrlParamList
-        const headerList = Object.keys(headers).sort().join(';').toLowerCase();
-        const urlParamList = Object.keys(params).sort().join(';').toLowerCase();
-        
-        // 4. 生成 HttpString
-        const httpString = [
+        // 3. 生成 FormatString
+        const formatString = [
             method.toLowerCase(),
             pathname,
-            this.obj2str(params),
-            this.obj2str(headers),
-            ''
+            '',  // 空行
+            'content-type=text/csv',
+            ''   // 结尾空行
         ].join('\n');
+        
+        // 4. 计算 sha1
+        const sha1FormatString = CryptoJS.SHA1(formatString).toString();
         
         // 5. 生成 StringToSign
         const stringToSign = [
             'sha1',
             keyTime,
-            CryptoJS.SHA1(httpString).toString(),
+            sha1FormatString,
             ''
         ].join('\n');
         
@@ -51,8 +49,8 @@ class COSConfig {
             'q-ak': this.config.SecretId,
             'q-sign-time': keyTime,
             'q-key-time': keyTime,
-            'q-header-list': headerList,
-            'q-url-param-list': urlParamList,
+            'q-header-list': 'content-type',
+            'q-url-param-list': '',
             'q-signature': signature
         };
         
@@ -62,13 +60,5 @@ class COSConfig {
             .join('&');
             
         return `https://${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com/${key}?${queryString}`;
-    }
-
-    // 辅助函数：将对象转换为字符串
-    static obj2str(obj) {
-        const items = Object.entries(obj)
-            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-            .map(([key, value]) => `${key.toLowerCase()}=${value}`);
-        return items.join('&');
     }
 } 

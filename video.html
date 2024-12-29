@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频学习</title>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+    <script src="https://player.bilibili.com/api.js"></script>
+    <script src="cosConfig.js"></script>
+    <script src="cosData.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #808080;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        #container {
+            text-align: center;
+            color: white;
+            width: 800px;
+        }
+
+        #videoContainer {
+            position: relative;
+            width: 100%;
+            margin: 20px auto;
+        }
+
+        #videoPlayer {
+            width: 100%;
+            background: black;
+        }
+
+        #probeContainer {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+
+        .probe-button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .probe-button:hover {
+            background-color: #45a049;
+        }
+
+        /* 添加实验结束页面样式 */
+        #thankYouScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #808080;
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .thank-you-title {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .return-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .return-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="instructionScreen" style="text-align: center;">
+            <h2>实验说明</h2>
+            <div style="text-align: left; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+                <p>欢迎参加本次视频学习实验。在实验过程中：</p>
+                <ol>
+                    <p>1. 你将观看一段教学视频</p>
+                    <p>2. 在观看过程中，视频会随机暂停</p>
+                    <p>3. 暂停时，你需要回答一个简单的问题：你是否在想视频内容以外的事情</p>
+                    <p>4. 回答完问题后，视频会继续播放</p>
+                </ol>
+                <p>注意事项：</p>
+                <ul>
+                    <p>• 请认真观看视频内容</p>
+                    <p>• 请诚实回答每个问题</p>
+                    <p>• 视频播放过程中不能快进、倒退或调整播放速度</p>
+                </ul>
+            </div>
+            <button class="probe-button" onclick="startExperiment()">我知道了</button>
+        </div>
+
+        <div id="videoContainer" style="display: none;">
+            <video id="videoPlayer" 
+                controls
+                controlsList="nodownload nofullscreen noplaybackrate"
+                disablePictureInPicture
+                style="width: 800px; height: 500px;">
+            </video>
+            <div id="probeContainer">
+                <h3>你现在是否在想视频内容以外的事情？</h3>
+                <button class="probe-button" onclick="handleProbeResponse('是')">是</button>
+                <button class="probe-button" onclick="handleProbeResponse('否')">否</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="cosData.js"></script>
+
+    <!-- 添加结束页面 -->
+    <div id="thankYouScreen" style="display: none;">
+        <div class="thank-you-content">
+            <h1 class="thank-you-title">视频任务完成</h1>
+            <div class="thank-you-message">
+                <p>感谢您完成视频学习任务！</p>
+                <p>您的数据已经成功保存。</p>
+            </div>
+            <button class="return-button" onclick="window.location.href='index.html'">
+                返回主页面
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+        const probeContainer = document.getElementById('probeContainer');
+        
+        // 视频源配置
+        const videoSources = {
+            3: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade3.mp4',
+            4: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade4.mp4',
+            5: 'https://mw-experiment-1333907144.cos.ap-guangzhou.myqcloud.com/grade5.mp4'
+        };
+
+        let probeTimepoints = [];
+        let responses = [];
+        let nextProbeIndex = 0;
+        let canInteract = true;
+
+        function initializeVideo(grade) {
+            // 设置视频源
+            videoPlayer.src = videoSources[grade];
+            
+            // 等待视频载完成
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                // 生成探针时间点
+                generateProbeTimepoints();
+                // 添加视频事件监听器
+                setupVideoEventListeners();
+            });
+        }
+
+        // 设置视频事件监听器
+        function setupVideoEventListeners() {
+            // 监听时间更新
+            videoPlayer.addEventListener('timeupdate', checkForProbe);
+            
+            // 监听视频结束
+            videoPlayer.addEventListener('ended', () => {
+                // 保存数据
+                COSDataManager.saveToServer('Video', responses)
+                .then(() => {
+                    // 标记任务完成
+                    const completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '{}');
+                    completedTasks['Video'] = true;
+                    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
+                    
+                    // 隐藏视频容器
+                    document.getElementById('container').style.display = 'none';
+                    // 显示完成页面
+                    document.getElementById('thankYouScreen').style.display = 'flex';
+                }).catch(error => {
+                    console.error('保存数据失败:', error);
+                    alert('数据保存出现问题，请联系实验员！');
+                });
+            });
+        }
+
+        // 生成探针时间点
+        function generateProbeTimepoints() {
+            probeTimepoints = [];
+            let time = 90;  // 从90秒开始
+            
+            // 生成探针直到视频结束
+            while (time < videoPlayer.duration) {  // 使用视频实际时长
+                probeTimepoints.push(time);
+                time += Math.random() * (150 - 90) + 90;
+            }
+        }
+
+        function checkForProbe() {
+            if (!canInteract || nextProbeIndex >= probeTimepoints.length) return;
+            if (videoPlayer.currentTime >= probeTimepoints[nextProbeIndex]) {
+                showProbe();
+            }
+        }
+
+        function showProbe() {
+            videoPlayer.pause();
+            canInteract = false;
+            probeContainer.style.display = 'block';
+        }
+
+        // 获取年级并初始化视频
+        function startExperiment() {
+            // 从 localStorage 获取被试信息
+            const participantInfo = JSON.parse(localStorage.getItem('participantInfo'));
+            
+            if (!participantInfo || !participantInfo.grade) {
+                alert('未找到年级信息，请先完成个人信息填写！');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            const grade = participantInfo.grade;
+            if (grade in videoSources) {
+                document.getElementById('instructionScreen').style.display = 'none';
+                document.getElementById('videoContainer').style.display = 'block';
+                initializeVideo(grade);
+            } else {
+                alert('无效的年级信息');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // 处理探针响应
+        function handleProbeResponse(response) {
+            // 获取被试信息
+            const participantInfo = JSON.parse(localStorage.getItem('participantInfo'));
+            
+            responses.push({
+                name: participantInfo.name,
+                gender: participantInfo.gender,
+                age: participantInfo.age,
+                grade: participantInfo.grade,
+                probeTime: probeTimepoints[nextProbeIndex],  // 选择题现时间
+                response: response,                          // 选项内容
+            });
+
+            probeContainer.style.display = 'none';
+            nextProbeIndex++;
+            canInteract = true;
+            videoPlayer.play();
+        }
+
+        // 防止用户交互
+        function preventInteraction(event) {
+            if (!canInteract) {
+                event.preventDefault();
+                videoPlayer.currentTime = probeTimepoints[nextProbeIndex];
+            }
+        }
+
+        // 添加防止全屏的函数
+        function preventFullscreen() {
+            if (document.fullscreenElement || 
+                document.webkitFullscreenElement || 
+                document.mozFullScreenElement || 
+                document.msFullscreenElement) {
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

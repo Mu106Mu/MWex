@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SART任务</title>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-live-query-min.js"></script>
+    <script src="cosConfig.js"></script>
+    <script src="cosData.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #808080;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        #experimentContainer {
+            text-align: center;
+            color: white;
+        }
+
+        #digitDisplay {
+            font-size: 72px;
+            margin: 20px;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        #feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #thankYouScreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a 0%, #363636 100%);
+            color: white;
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .thank-you-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 40px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-title {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .thank-you-message {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+        }
+        
+        .return-button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .return-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="experimentContainer">
+        <div id="instructionScreen">
+            <h2>实验说明</h2>
+            <p>这是一个持续性注意力测试任务(SART)。</p>
+            <p>在实验中，屏幕中央会依次呈现1-9的数字。</p>
+            <p>当看到数字3时，请<strong>不要</strong>按任何键。</p>
+            <p>看到其他数字时，请尽快按空格键。</p>
+            <p>首先进行练习阶段，然后是正式实验。</p>
+            <button onclick="startPractice()">开始练习</button>
+        </div>
+        <div id="digitDisplay" style="display: none;"></div>
+        <div id="feedback" style="display: none;"></div>
+    </div>
+
+    <div id="thankYouScreen" style="display: none;">
+        <div class="thank-you-content">
+            <h1 class="thank-you-title">SART任务完成</h1>
+            <div class="thank-you-message">
+                <p>感谢您完成SART任务！</p>
+                <p>您的数据已经成功保存。</p>
+            </div>
+            <button class="return-button" onclick="window.location.href='index.html'">
+                返回主页面
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 时间参数
+        const FIXATION_TIME = 500;    // 注视点呈现时间（秒）
+        const STIMULUS_TIME = 1250;   // 刺激呈现时间（毫秒）
+        const ITI = 1000;            // 试次间隔时间（毫秒）
+        const FEEDBACK_TIME = 1300;   // 反馈呈现时间（毫秒）
+
+        // 实验参数
+        let isPractice = true;
+        let currentTrial = 0;
+        let validTrials = 0;
+        let practiceTrials = 6;      // 练习阶段试次数
+        let formalTrials = 10;       // 正式实验试次数
+        let responses = [];
+        let trialNumbers = [];
+        let mindWanderingTrials = [];
+        let mindWanderingResponses = [];
+
+        // 试次控制变量
+        let hasResponded = false;
+        let canRespond = false;
+        let currentStimulus = null;
+        let stimulusStartTime = 0;
+
+        // 定义全局的事件处理函数
+        function handleResponse(event) {
+            // 如果已经显示过反馈，就不再处理任何反应
+            if (document.getElementById('feedback').style.display === 'block') {
+                return;
+            }
+
+            // 提前反应：在注视点阶段就按键
+            if (event.code === 'Space' && !canRespond) {
+                const display = document.getElementById('digitDisplay');
+                display.style.display = 'none';
+                hasResponded = true;
+                showFeedback('提前反应！').then(() => {
+                    window.resolve();
+                });
+                return;
+            }
+
+            // 正常反应
+            if (event.code === 'Space' && canRespond && !hasResponded) {
+                hasResponded = true;
+                const responseTime = Date.now() - stimulusStartTime;
+                const isCorrect = (currentStimulus === 3) ? false : true;
+                
+                responses.push({
+                    stimulus: currentStimulus,
+                    responseTime: responseTime,
+                    keyPressed: true,
+                    isCorrect: isCorrect,
+                    isPractice: isPractice
+                });
+                
+                validTrials++;
+                
+                if (isPractice && !isCorrect) {
+                    const display = document.getElementById('digitDisplay');
+                    display.style.display = 'none';
+                    showFeedback('错误！').then(() => {
+                        window.resolve();
+                    });
+                } else {
+                    setTimeout(() => window.resolve(), STIMULUS_TIME - responseTime);
+                }
+            }
+        }
+
+        // 生成实验序列
+        function generateTrialNumbers(totalTrials, targetCount) {
+            let numbers = [];
+            
+            // 添加指定数量的数字3
+            for (let i = 0; i < targetCount; i++) {
+                numbers.push(3);
+            }
+            
+            // 填充其他数字
+            while (numbers.length < totalTrials) {
+                const num = Math.floor(Math.random() * 8) + 1;
+                if (num !== 3) {
+                    numbers.push(num);
+                }
+            }
+            
+            // 随机打乱序列
+            for (let i = numbers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+            }
+            
+            return numbers;
+        }
+
+        // 显示反馈
+        function showFeedback(message) {
+            return new Promise(resolve => {
+                const feedback = document.getElementById('feedback');
+                feedback.textContent = message;
+                feedback.style.display = 'block';
+                
+                setTimeout(() => {
+                    feedback.style.display = 'none';
+                    resolve();
+                }, FEEDBACK_TIME);
+            });
+        }
+
+        // 生成走神评估试次
+        function generateMindWanderingTrials(totalTrials, count) {
+            let trials = [];
+            const intervalSize = Math.floor(totalTrials / count);
+            
+            // 在每个区间内随机选择一个试次
+            for (let i = 0; i < count; i++) {
+                const intervalStart = i * intervalSize;
+                const intervalEnd = (i === count - 1) ? totalTrials : (i + 1) * intervalSize;
+                const trial = intervalStart + Math.floor(Math.random() * (intervalEnd - intervalStart));
+                trials.push(trial);
+            }
+            
+            return trials.sort((a, b) => a - b);
+        }
+
+        // 显示走神评估探针
+        function showMindWanderingProbe() {
+            return new Promise(resolve => {
+                const probe = document.createElement('div');
+                probe.style.position = 'fixed';
+                probe.style.top = '50%';
+                probe.style.left = '50%';
+                probe.style.transform = 'translate(-50%, -50%)';
+                probe.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                probe.style.padding = '20px';
+                probe.style.borderRadius = '5px';
+                probe.style.color = 'white';
+                
+                const instructionText = isPractice ? 
+                    '<p style="color: yellow;">这是走神评估示例��正���实验中会随机出现类似的问题</p>' : '';
+                
+                probe.innerHTML = `
+                    ${instructionText}
+                    <h3>请回答：</h3>
+                    <p>刚才做任务时，你是否在想任务之外的事情？</p>
+                    <button onclick="handleMindWanderingResponse('是')">是</button>
+                    <button onclick="handleMindWanderingResponse('否')">否</button>
+                `;
+                
+                document.getElementById('experimentContainer').appendChild(probe);
+                
+                window.handleMindWanderingResponse = function(response) {
+                    mindWanderingResponses.push({
+                        trial: currentTrial,
+                        timepoint: new Date().toISOString(),
+                        response: response,
+                        isPractice: isPractice
+                    });
+                    probe.remove();
+                    resolve();
+                };
+            });
+        }
+
+        // 开始一个试次
+        async function startTrial() {
+            hasResponded = false;
+            canRespond = false;
+            
+            currentStimulus = trialNumbers[currentTrial];
+            const display = document.getElementById('digitDisplay');
+            
+            // 在显示注视点之前就添加事件监听器
+            document.addEventListener('keydown', handleResponse);
+            
+            // 显示注视点
+            display.textContent = '+';
+            display.style.display = 'block';
+            await new Promise(resolve => setTimeout(resolve, FIXATION_TIME));
+            
+            // 显示刺激
+            display.textContent = currentStimulus;
+            stimulusStartTime = Date.now();
+            canRespond = true;
+
+            await new Promise((resolve) => {
+                window.resolve = resolve;
+                
+                setTimeout(() => {
+                    display.style.display = 'none';
+                    
+                    if (!hasResponded) {
+                        const isCorrect = currentStimulus === 3;
+                        responses.push({
+                            stimulus: currentStimulus,
+                            responseTime: null,
+                            keyPressed: false,
+                            isCorrect: isCorrect,
+                            isPractice: isPractice
+                        });
+                        
+                        validTrials++;
+                        
+                        if (currentStimulus !== 3 && isPractice) {
+                            showFeedback('错误！').then(() => {
+                                window.resolve();
+                            });
+                        } else {
+                            window.resolve();
+                        }
+                    } else {
+                        window.resolve();
+                    }
+                }, STIMULUS_TIME);
+            });
+            
+            // 在试次结束时移除事件监听器
+            document.removeEventListener('keydown', handleResponse);
+            
+            // 试次间隔
+            await new Promise(resolve => setTimeout(resolve, ITI));
+            
+            // 检查是否需要显示走神评估
+            if (mindWanderingTrials.includes(currentTrial)) {
+                await showMindWanderingProbe();
+            }
+            
+            // 开始下一个试次或���束当前阶段
+            currentTrial++;
+            if (currentTrial < trialNumbers.length) {
+                startTrial();
+            } else {
+                endBlock();
+            }
+        }
+
+        // 开始练习阶段
+        function startPractice() {
+            isPractice = true;
+            currentTrial = 0;
+            validTrials = 0;
+            responses = [];
+            mindWanderingTrials = [3];
+            mindWanderingResponses = [];
+            trialNumbers = generateTrialNumbers(practiceTrials, Math.floor(practiceTrials * 0.2));
+            
+            document.getElementById('instructionScreen').style.display = 'none';
+            document.getElementById('digitDisplay').style.display = 'block';
+            
+            // 在实验开始时添加事件监听器
+            document.addEventListener('keydown', handleResponse);
+            
+            startTrial();
+        }
+
+        // 开始正式实验
+        function startFormalExperiment() {
+            isPractice = false;
+            currentTrial = 0;
+            validTrials = 0;
+            responses = [];
+            mindWanderingResponses = [];
+            // 在正式实验中随机添加走神评估
+            mindWanderingTrials = generateMindWanderingTrials(formalTrials, Math.floor(formalTrials * 0.1));
+            trialNumbers = generateTrialNumbers(formalTrials, Math.floor(formalTrials * 0.2));
+            
+            document.getElementById('instructionScreen').style.display = 'none';
+            document.getElementById('digitDisplay').style.display = 'block';
+            
+            startTrial();
+        }
+
+        // 结束当前阶段
+        function endBlock() {
+            if (isPractice) {
+                const practiceResponses = responses.filter(r => r.isPractice);
+                const correctCount = practiceResponses.filter(r => r.isCorrect).length;
+                const accuracy = ((correctCount / practiceResponses.length) * 100).toFixed(1);
+                
+                if (parseFloat(accuracy) >= 90) {
+                    document.getElementById('instructionScreen').innerHTML = `
+                        <h2>���习阶段结束</h2>
+                        <p>您的准确率为: ${accuracy}%</p>
+                        <p>记住：</p>
+                        <p>- 看到数字3时<strong>不要</strong>按键</p>
+                        <p>- 看到其他数字时尽快按空格键</p>
+                        <p>- 请保持注意力集中</p>
+                        <button onclick="startFormalExperiment()">开始正式实验</button>
+                    `;
+                } else {
+                    document.getElementById('instructionScreen').innerHTML = `
+                        <h2>练习阶段结束</h2>
+                        <p>您的准确率为: ${accuracy}%</p>
+                        <p>准确率未达到要求（90%）��要重新练习</p>
+                        <p>记住：</p>
+                        <p>- 看到数字3时<strong>不要</strong>按键</p>
+                        <p>- 看到其他数字时尽快按空格键</p>
+                        <p>- 请保持注意力集中</p>
+                        <button onclick="startPractice()">重新练习</button>
+                    `;
+                }
+                document.getElementById('instructionScreen').style.display = 'block';
+            } else {
+                const formattedData = COSDataManager.formatSARTData(responses, mindWanderingResponses);
+                
+                // 分别保存 SART 任务数据和探针数据
+                Promise.all([
+                    COSDataManager.saveToServer('SART_Performance', formattedData.sartResponses),
+                    COSDataManager.saveToServer('SART_Probes', formattedData.mindWanderingResponses)
+                ]).then(() => {
+                    // 标记任务完成
+                    const completedTasks = JSON.parse(localStorage.getItem('completedTasks') || '{}');
+                    completedTasks['SART'] = true;
+                    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
+                    
+                    document.getElementById('experimentContainer').style.display = 'none';
+                    document.getElementById('thankYouScreen').style.display = 'flex';
+                }).catch(error => {
+                    console.error('保存数据失败:', error);
+                    alert('数据保存出现问题，请联系实验员！');
+                });
+            }
+            document.removeEventListener('keydown', handleResponse);
+        }
+
+        // 添加事件监听器清理函数
+        function cleanupEventListeners() {
+            document.removeEventListener('keydown', handleResponse);
+        }
+
+        // 暴露到全局作用域
+        window.startPractice = startPractice;
+        window.startFormalExperiment = startFormalExperiment;
+
+        function finishExperiment() {
+            document.getElementById('experimentContainer').style.display = 'none';
+            document.getElementById('thankYouScreen').style.display = 'flex';
+        }
+    </script>
+</body>
+</html> 

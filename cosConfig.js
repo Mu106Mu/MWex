@@ -18,14 +18,13 @@ class COSConfig {
         // 2. 准备签名所需参数
         const method = 'put';
         const pathname = '/' + key;
-        const headers = { 'content-type': 'text/csv' };
         
-        // 3. 生成 FormatString
+        // 3. 生成 FormatString，使用 URL 编码的 content-type
         const formatString = [
             method.toLowerCase(),
             pathname,
             '',  // 空行
-            'content-type=text/csv',
+            'content-type=' + encodeURIComponent('text/csv'),
             ''   // 结尾空行
         ].join('\n');
         
@@ -36,12 +35,19 @@ class COSConfig {
         const stringToSign = [
             'sha1',
             keyTime,
-            sha1FormatString,
-            ''
+            sha1FormatString
         ].join('\n');
         
         // 6. 计算签名
         const signature = CryptoJS.HmacSHA1(stringToSign, signKey).toString();
+
+        // 添加调试日志
+        console.log('Debug Info:', {
+            formatString,
+            sha1FormatString,
+            stringToSign,
+            signature
+        });
         
         // 7. 生成授权参数
         const query = {

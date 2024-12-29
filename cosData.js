@@ -21,20 +21,16 @@ class COSDataManager {
             console.log('CSV内容:', csvContent);
             
             // 上传文件
-            const url = `https://${COSConfig.config.Bucket}.cos.${COSConfig.config.Region}.myqcloud.com/${fileName}`;
-            console.log('上传URL:', url);
+            const signedUrl = COSConfig.getSignedUrl(fileName);
+            console.log('上传URL:', signedUrl);
             
-            const response = await fetch(
-                url,
-                {
-                    method: 'PUT',
-                    body: csvContent,
-                    headers: {
-                        'Content-Type': 'text/csv',
-                        'Access-Control-Allow-Origin': '*'
-                    }
+            const response = await fetch(signedUrl, {
+                method: 'PUT',
+                body: csvContent,
+                headers: {
+                    'Content-Type': 'text/csv'
                 }
-            );
+            });
 
             console.log('上传响应:', response);
             const responseText = await response.text();
@@ -48,18 +44,9 @@ class COSDataManager {
             this.saveLocally(experimentType, data);
             return true;
         } catch (error) {
-            console.error('保存数据失败:', error.message);
-            console.error('错误堆栈:', error.stack);
-            console.error('错误类型:', error.name);
-            if (error instanceof TypeError) {
-                console.error('网络错误或CORS问题');
-            }
-            
-            // 保存失败时仍然保存本地备份
+            console.error('保存数据失败:', error);
             this.saveLocally(experimentType, data);
-            
-            // 临时：即使上传失败也返回成功
-            return true;  // 这样至少可以继续实验
+            return true;  // 继续实验
         }
     }
 
@@ -67,7 +54,7 @@ class COSDataManager {
         const downloadLink = document.createElement('a');
         const participantInfo = JSON.parse(localStorage.getItem('participantInfo'));
         
-        // ��CSV文件
+        // CSV文件
         const blob = new Blob([this.convertToCSV(data)], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         

@@ -7,17 +7,16 @@ class COSConfig {
         SecretKey: 'y0YzEJExeCinjbKuMTTIvWJxnbDi2BHE'        // 替换为你的 SecretKey
     };
 
-    static async getUploadAuth(fileName) {
-        try {
-            // 使用临时授权
-            return {
-                authorization: 'q-sign-algorithm=sha1&q-ak=' + this.config.SecretId + '&q-sign-time=' + 
-                             Math.floor(Date.now() / 1000) + ';' + (Math.floor(Date.now() / 1000) + 3600),
-                sessionToken: null
-            };
-        } catch (error) {
-            console.error('获取上传授权失败:', error);
-            throw error;
-        }
+    static getSignedUrl(key) {
+        const now = Math.floor(Date.now() / 1000);
+        const expireTime = now + 3600;
+        const keyTime = `${now};${expireTime}`;
+        
+        // 生成签名
+        const signKey = CryptoJS.HmacSHA1(keyTime, this.config.SecretKey).toString();
+        const stringToSign = `put\n/${key}\n\nhost=${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com\n`;
+        const signature = CryptoJS.HmacSHA1(stringToSign, signKey).toString();
+        
+        return `https://${this.config.Bucket}.cos.${this.config.Region}.myqcloud.com/${key}?q-sign-algorithm=sha1&q-ak=${this.config.SecretId}&q-sign-time=${keyTime}&q-key-time=${keyTime}&q-signature=${signature}`;
     }
 } 

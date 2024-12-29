@@ -520,13 +520,13 @@
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible' && 
                 document.getElementById('experimentList').style.display === 'grid') {
-                checkTaskCompletion();
+                checkCompletedTasks();
             }
         });
 
         window.addEventListener('focus', function() {
             if (document.getElementById('experimentList').style.display === 'grid') {
-                checkTaskCompletion();
+                checkCompletedTasks();
             }
         });
 
@@ -574,6 +574,25 @@
                 console.error('读取任务完成状态失败:', e);
             }
         }
+
+        // 检查任务完成状态
+        function checkTaskCompletion() {
+            // 实际上这个函数功能和 checkCompletedTasks 是一样的
+            checkCompletedTasks();
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && 
+                document.getElementById('experimentList').style.display === 'grid') {
+                checkCompletedTasks();
+            }
+        });
+
+        window.addEventListener('focus', function() {
+            if (document.getElementById('experimentList').style.display === 'grid') {
+                checkCompletedTasks();
+            }
+        });
     </script>
 </body>
 </html> 
